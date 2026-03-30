@@ -1,0 +1,16 @@
+﻿__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg
+.env
+.venv
+results/
+*.png
+*.csv
+!docs/assets/*.png
+wandb/
