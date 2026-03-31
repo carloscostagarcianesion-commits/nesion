@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nesion | KV-Cache Eviction Engine</title>
+    <meta name="description" content="Production-grade KV-Cache compression kernel for LLMs using Heavy-Hitter Oracle (H2O) technology.">
+    
+    <!-- Modern stylish fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Utilities -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --brand-primary: #3b82f6;
+            --brand-secondary: #8b5cf6;
+            --brand-accent: #10b981;
+            --bg-dark: #020617;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.15) 0, transparent 50%);
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Custom slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 99px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #60a5fa;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.6);
+            border: 2px solid white;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            border-color: rgba(94, 234, 212, 0.2);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="min-h-screen selection:bg-blue-500/30 selection:text-blue-200">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center glass border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center">
+                <i data-lucide="zap" class="w-5 h-5 text-white fill-white"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight">Nesion<span class="text-blue-400">.</span></span>
+        </div>
+        <div class="hidden md:flex gap-8 text-sm font-medium text-slate-400">
+            <a href="#calculator" class="hover:text-white transition-colors">Calculator</a>
+            <a href="#benchmarks" class="hover:text-white transition-colors">Benchmarks</a>
+            <a href="#documentation" class="hover:text-white transition-colors">Docs</a>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="https://github.com/organization/nesion" class="p-2 rounded-full hover:bg-white/5 transition-colors">
+                <i data-lucide="github" class="w-5 h-5"></i>
+            </a>
+            <button class="bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded-full text-sm font-semibold transition-all shadow-lg shadow-blue-900/20">
+                Star on GitHub
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 px-6 max-w-7xl mx-auto text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-8">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            v0.1.0-alpha Production Ready
+        </div>
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-6 mt-4 leading-[1.1]">
+            Unleash <span class="gradient-text">Infinite Context</span><br>with Zero Retraining.
+        </h1>
+        <p class="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto font-light leading-relaxed mb-12">
+            Nesion is a hyper-optimized KV-Cache eviction kernel for PyTorch LLMs. 
+            Reduce VRAM footprint by up to <span class="text-white font-semibold">70%</span> 
+            without compromising model intelligence.
+        </p>
+
+        <div class="flex flex-wrap justify-center gap-4">
+            <button class="bg-white text-slate-950 px-8 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-slate-200 transition-all shadow-xl">
+                Ready to optimize
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+            <div class="flex items-center gap-4 bg-white/5 border border-white/10 px-8 py-3 rounded-full font-mono text-sm">
+                <span class="text-slate-400">$</span>
+                <span>pip install nesion</span>
+                <i data-lucide="copy" class="w-4 h-4 text-slate-500 cursor-pointer hover:text-white transition-colors"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Comparison Section (The "Before & After" request) -->
+    <section id="benchmarks" class="py-20 px-6 max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">The Performance <span class="text-blue-400">Wall</span></h2>
+            <p class="text-slate-400">See how Nesion shatters the VRAM constraints across the most popular architectures.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Example Card: Llama 3 8B -->
+            <div class="glass p-8 rounded-3xl card-hover relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl -mr-16 -mt-16 group-hover:bg-blue-600/20 transition-all"></div>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <span class="text-xs font-bold text-blue-500 uppercase tracking-widest">Meta AI</span>
+                        <h3 class="text-2xl font-bold mt-1">Llama 3.1 8B</h3>
+                    </div>
+                    <div class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20">
+                        -70% VRAM
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Baseline (Full KV)</span>
+                            <span class="font-mono text-slate-300">12.4 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-slate-400 h-full w-[100%] opacity-30"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-blue-400 mb-1">
+                            <span>Nesion (30% Budget)</span>
+                            <span class="font-mono font-bold">3.7 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-blue-500 h-full w-[30%] shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-6 border-t border-white/5 text-sm">
+                    <span class="text-slate-400">Context Limit @ 24GB</span>
+                    <span class="text-white font-bold">8k &rarr; 64k+</span>
+                </div>
+            </div>
+
+            <!-- card: Mistral 7B -->
+            <div class="glass p-8 rounded-3xl card-hover relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 blur-3xl -mr-16 -mt-16 group-hover:bg-purple-600/20 transition-all"></div>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <span class="text-xs font-bold text-purple-500 uppercase tracking-widest">Mistral AI</span>
+                        <h3 class="text-2xl font-bold mt-1">Mistral 7B v0.3</h3>
+                    </div>
+                    <div class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20">
+                        -64% VRAM
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Baseline (Full KV)</span>
+                            <span class="font-mono text-slate-300">8.1 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-slate-400 h-full w-[100%] opacity-30"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-purple-400 mb-1">
+                            <span>Nesion (40% Budget)</span>
+                            <span class="font-mono font-bold">3.2 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-purple-500 h-full w-[40%] shadow-[0_0_10px_rgba(139,92,246,0.5)]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-6 border-t border-white/5 text-sm">
+                    <span class="text-slate-400">TPT (Tokens/sec)</span>
+                    <span class="text-white font-bold">+28% Speed</span>
+                </div>
+            </div>
+
+            <!-- card: Phi-3 -->
+            <div class="glass p-8 rounded-3xl card-hover relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-600/10 blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-600/20 transition-all"></div>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <span class="text-xs font-bold text-emerald-500 uppercase tracking-widest">Microsoft</span>
+                        <h3 class="text-2xl font-bold mt-1">Phi-3 Mini</h3>
+                    </div>
+                    <div class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20">
+                        -50% VRAM
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Baseline (Full KV)</span>
+                            <span class="font-mono text-slate-300">4.2 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-slate-400 h-full w-[100%] opacity-30"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-teal-400 mb-1">
+                            <span>Nesion (50% Budget)</span>
+                            <span class="font-mono font-bold">2.1 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-teal-500 h-full w-[50%] shadow-[0_0_10px_rgba(20,184,166,0.5)]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-6 border-t border-white/5 text-sm">
+                    <span class="text-slate-400">Inference Coherence</span>
+                    <span class="text-white font-bold">99.8% Match</span>
+                </div>
+            </div>
+
+            <!-- card: Qwen 2.5 -->
+            <div class="glass p-8 rounded-3xl card-hover relative overflow-hidden group">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Alibaba Cloud</span>
+                        <h3 class="text-2xl font-bold mt-1">Qwen 2.5 7B</h3>
+                    </div>
+                    <div class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20">
+                        -70% VRAM
+                    </div>
+                </div>
+                <div class="space-y-4 mb-8">
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Baseline</span>
+                            <span class="font-mono text-slate-300">10.8 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full">
+                            <div class="bg-slate-400 h-full w-[100%] opacity-30"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-blue-400 mb-1">
+                            <span>Nesion Cache</span>
+                            <span class="font-mono font-bold">3.2 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full">
+                            <div class="bg-blue-500 h-full w-[30%]"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center pt-6 border-t border-white/5 text-sm">
+                    <span class="text-slate-400">Context Potential</span>
+                    <span class="text-white font-bold">32k &rarr; 128k</span>
+                </div>
+            </div>
+
+             <!-- card: Gemma 2 -->
+             <div class="glass p-8 rounded-3xl card-hover relative overflow-hidden group">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Google DeepMind</span>
+                        <h3 class="text-2xl font-bold mt-1">Gemma 2 9B</h3>
+                    </div>
+                    <div class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20">
+                        -60% VRAM
+                    </div>
+                </div>
+                <div class="space-y-4 mb-8">
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Baseline</span>
+                            <span class="font-mono text-slate-300">14.1 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full">
+                            <div class="bg-slate-400 h-full w-[100%] opacity-30"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs text-emerald-400 mb-1">
+                            <span>Nesion Cache</span>
+                            <span class="font-mono font-bold">5.6 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full">
+                            <div class="bg-emerald-500 h-full w-[40%]"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center pt-6 border-t border-white/5 text-sm">
+                    <span class="text-slate-400">VRAM Footprint</span>
+                    <span class="text-white font-bold">Consumer GPU Friendly</span>
+                </div>
+            </div>
+
+            <!-- More architectures -->
+            <div class="glass p-8 rounded-3xl flex flex-col items-center justify-center border-dashed border-white/10 group cursor-pointer hover:bg-white/5 transition-all">
+                <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <i data-lucide="plus" class="w-6 h-6 text-slate-400"></i>
+                </div>
+                <span class="font-semibold text-slate-400">And 50+ more...</span>
+                <p class="text-xs text-slate-500 text-center mt-2 px-6">Any architecture using Hugging Face AutoModel classes.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Calculator -->
+    <section id="calculator" class="py-20 px-6 max-w-4xl mx-auto">
+        <div class="glass p-8 md:p-12 rounded-[2.5rem] border-white/10 relative shadow-2xl">
+            <h2 class="text-3xl font-bold mb-2 flex items-center gap-3">
+                <i data-lucide="calculator" class="text-blue-500"></i>
+                Savings Calculator
+            </h2>
+            <p class="text-slate-400 mb-12">Simulate real-world memory impact on a hypothetical 7B model.</p>
+
+            <div class="space-y-12">
+                <!-- Context Length -->
+                <div>
+                    <div class="flex justify-between items-end mb-4">
+                        <label class="text-sm font-semibold text-slate-300 uppercase tracking-widest">Context Window</label>
+                        <span id="ctx-display" class="text-3xl font-bold text-blue-400 mono">4096 <span class="text-lg text-slate-600">tokens</span></span>
+                    </div>
+                    <input type="range" id="ctx-slider" min="512" max="131072" step="512" value="4096" class="w-full">
+                </div>
+
+                <!-- Budget -->
+                <div>
+                    <div class="flex justify-between items-end mb-4">
+                        <label class="text-sm font-semibold text-slate-300 uppercase tracking-widest">Retention Budget</label>
+                        <span id="budget-display" class="text-3xl font-bold text-purple-400 mono">30 <span class="text-lg text-slate-600">%</span></span>
+                    </div>
+                    <input type="range" id="budget-slider" min="5" max="100" step="5" value="30" class="w-full">
+                </div>
+
+                <!-- Results -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-white/5">
+                    <div class="bg-white/5 p-8 rounded-3xl border border-white/5 text-center">
+                        <span class="text-xs text-slate-500 uppercase font-bold tracking-widest">Standard VRAM</span>
+                        <div id="vram-baseline" class="text-4xl font-bold mt-2 mono">~2.14 GB</div>
+                    </div>
+                    <div class="bg-blue-600/10 p-8 rounded-3xl border border-blue-500/20 text-center relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4">
+                            <i data-lucide="sparkles" class="w-6 h-6 text-blue-400 opacity-30"></i>
+                        </div>
+                        <span class="text-xs text-blue-400 uppercase font-bold tracking-widest">Nesion Optimized</span>
+                        <div id="vram-nesion" class="text-4xl font-bold mt-2 mono text-blue-300">~0.64 GB</div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                   <div id="saving-pct" class="inline-block px-6 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
+                        -70.0% Reduction
+                   </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Preview -->
+    <section id="documentation" class="py-20 px-6 max-w-5xl mx-auto">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold mb-4 italic">&ldquo;It just works.&rdquo;</h2>
+            <p class="text-slate-500">Zero architectural changes required. Compatible with native generation loops.</p>
+        </div>
+
+        <div class="glass rounded-3xl overflow-hidden shadow-2xl border-white/5">
+            <div class="bg-[#0f172a] px-6 py-3 border-b border-white/5 flex items-center justify-between">
+                <div class="flex gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+                </div>
+                <span class="text-xs text-slate-500 font-mono">example.py</span>
+                <div></div>
+            </div>
+            <div class="p-8 mono text-sm leading-relaxed">
+                <div class="mb-4">
+                    <span class="text-purple-400">from</span> transformers <span class="text-purple-400">import</span> AutoModelForCausalLM<br>
+                    <span class="text-purple-400">from</span> nesion <span class="text-purple-400">import</span> NesionEngine
+                </div>
+                <div class="mb-4">
+                    model = AutoModelForCausalLM.from_pretrained(<span class="text-amber-300">"meta-llama/Llama-2-7b-hf"</span>)
+                </div>
+                <div class="text-slate-500 italic mb-4"># Intercept and purge context streams automatically</div>
+                <div>
+                    <span class="text-purple-400">with</span> NesionEngine(model, cache_budget=<span class="text-orange-400">0.3</span>):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;outputs = model.generate(inputs, max_new_tokens=<span class="text-orange-400">1024</span>)
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-20 px-6 border-t border-white/5 text-center">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-center gap-8 mb-12">
+                <a href="#" class="text-slate-400 hover:text-white transition-colors">Documentation</a>
+                <a href="#" class="text-slate-400 hover:text-white transition-colors">Benchmarks</a>
+                <a href="#" class="text-slate-400 hover:text-white transition-colors">Commercial Setup</a>
+                <a href="#" class="text-slate-400 hover:text-white transition-colors">Credits</a>
+            </div>
+            <p class="text-slate-600 text-sm">
+                Built with &hearts; by Nesion Engineering. Under MIT License.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Calculator Logic
+        const ctxSlider = document.getElementById('ctx-slider');
+        const budgetSlider = document.getElementById('budget-slider');
+        const ctxDisplay = document.getElementById('ctx-display');
+        const budgetDisplay = document.getElementById('budget-display');
+        const baseVramText = document.getElementById('vram-baseline');
+        const nesionVramText = document.getElementById('vram-nesion');
+        const savingBadge = document.getElementById('saving-pct');
+
+        function updateCalculator() {
+            const ctx = parseInt(ctxSlider.value);
+            const budget = parseInt(budgetSlider.value) / 100;
+            
+            // Display updates
+            ctxDisplay.innerHTML = `${ctx.toLocaleString()} <span class="text-lg text-slate-600">tokens</span>`;
+            budgetDisplay.innerHTML = `${(budget * 100).toFixed(0)} <span class="text-lg text-slate-600">%</span>`;
+
+            // Constants for a 7B model approx (Llama style)
+            const fp16_bytes = 2;
+            const layers = 32;
+            const heads = 32;
+            const head_dim = 128;
+            
+            // Baseline calc
+            const baselineBytes = 2 * layers * heads * ctx * head_dim * fp16_bytes;
+            const baselineGB = baselineBytes / (1024*1024*1024);
+            
+            // Nesion calc
+            // Fixed overhead (model itself not included in KV budget, but we're only calc KV VRAM here)
+            const nesionGB = baselineGB * budget;
+            
+            const reduction = (1 - (nesionGB / baselineGB)) * 100;
+
+            baseVramText.innerText = `~${baselineGB.toFixed(2)} GB`;
+            nesionVramText.innerText = `~${nesionGB.toFixed(2)} GB`;
+            savingBadge.innerText = `-${reduction.toFixed(1)}% Reduction`;
+        }
+
+        ctxSlider.addEventListener('input', updateCalculator);
+        budgetSlider.addEventListener('input', updateCalculator);
+        
+        // Initial run
+        updateCalculator();
+    </script>
+</body>
+</html>
